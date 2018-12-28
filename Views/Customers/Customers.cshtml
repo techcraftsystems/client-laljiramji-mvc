@@ -1,0 +1,310 @@
+﻿@model Client.Models.Customers;
+@{
+    ViewData["Title"] = Model.Name;
+}
+
+<style>
+    h4 {
+        padding-left: 12px;
+    }
+
+    .card .card-title {
+        font-size: 20px;
+        font-weight: 300;
+    }
+
+    .card-title.activator.grey-text.text-darken-4.truncate {
+        padding-top: 10px;
+        margin-bottom: 0px;
+    }
+
+    .activator.grey-text.text-darken-1 {
+        font-size: 1.1em;
+    }
+
+    #profile-card .card-content p {
+        color: #555;
+        font-size: 1.1em;
+        margin: 4px 0;
+    }
+
+    .card-content p span {
+        vertical-align: super;
+    }
+
+    #profile-card .card-content {
+        padding: 15px 20px 5px 20px;
+    }
+
+    .preview .body .col-md-1 {
+        width: 5%;
+    }
+
+    .preview .body .col-md-3 {
+        width: 29%;
+    }
+
+    .preview .body .col-md-5 {
+        width: 37%;
+    }
+
+    nav .input-field input:focus, nav .input-field input[type=text]:valid, nav .input-field input[type=password]:valid, nav .input-field input[type=email]:valid, nav .input-field input[type=url]:valid, nav .input-field input[type=date]:valid {
+        border-bottom: 1px solid #9e9e9e;
+    }
+
+    table td {
+        padding: 5px;
+    }
+
+        table td a {
+            color: #333;
+        }
+
+            table td a:hover {
+                color: #448AFF;
+            }
+
+    td i.material-icons {
+        height: 0px;
+        line-height: 0px;
+    }
+
+    #invoice-table th:nth-child(6),
+    #invoice-table td:nth-child(6),
+    #invoice-table th:nth-child(7),
+    #invoice-table td:nth-child(7) {
+        text-align: right;
+    }
+</style>
+
+<script type="text/javascript">
+    jq(function() {
+        jq('ul .invs').click(function(){
+            if(jq("#invoice-table").data('loaded') == 0){
+                GetLedgerEntries();
+                jq("#invoice-table").data('loaded', 1);
+            }
+        });
+
+        jq('.get-invoices a').click(function(){
+            GetLedgerEntries();
+        });
+
+        String.prototype.toAccounting = function() {
+            var str =  parseFloat(this).toFixed(2).replace(/(\d)(?=(\d{3})+\.)/g, '$1,');
+
+            if (str.charAt(0) == '-'){
+                return '(' + str.substring(1,40) + ')';
+            }
+            else {
+                return str;
+            }
+
+        };
+        function GetLedgerEntries(){
+            jq.ajax({
+                dataType: "json",
+                url: '/Customers/GetLedgerEntries',
+                data: {
+                    "custid":   @Model.Id,
+                    "stid":     @Model.Station.Id,
+                    "start":    jq('#invoiceStartDate').val(),
+                    "stop":     jq('#invoiceStopsDate').val(),
+                    "filter":   jq('#invoiceFilter').val()
+                },
+                beforeSend: function() {
+                    jq('body').removeClass('loaded');
+                },
+                success: function(results) {
+                    jq('#invoice-table tbody').empty();
+                    jq('#invoice-table tfoot').empty();
+
+                    var cumm = 0.0;
+
+                    jq.each(results, function(i, entry) {
+                        cumm += entry.amount;
+
+                        var row = "<tr data-idnt='" + entry.id + "' data-action='" + entry.action + "' data-account='" + entry.account + "'>";
+                        row += "<td>" + entry.date + "</td>";
+                        row += "<td>" + entry.quantity.toString().toAccounting() + "</td>";
+                        row += "<td>" + entry.description + "</td>";
+                        row += "<td>" + entry.lpo + "</td>";
+                        row += "<td>" + entry.invoice + "</td>";
+                        row += "<td>" + entry.price.toString().toAccounting() + "</td>";
+                        row += "<td class='bold-text'>" + entry.amount.toString().toAccounting() + "</td>";
+                        row += "<td><i class='material-icons blue-text left'>code</i><i class='material-icons red-text right'>delete_forever</i></td>";
+                        row += "</tr>";
+
+                        jq('#invoice-table tbody').append(row);
+                    })
+
+                    var footr = "<tr>";
+                    footr += "<td class='bold-text' colspan='6'>&nbsp;SUMMARY</td>";
+                    footr += "<td class='bold-text right'>" + cumm.toString().toAccounting() + "</td>";
+                    footr += "<td>&nbsp;</td>";
+                    footr += "</tr>";
+
+                    jq('#invoice-table tfoot').append(footr);
+                },
+                error: function(xhr, ajaxOptions, thrownError) {
+                    console.log(xhr.status);
+                    console.log(thrownError);
+                },
+                complete: function() {
+                    $('body').addClass('loaded');
+                }
+            });
+        }
+    });
+</script>
+
+<div class="rows">
+    <!--Navigation Column-->
+    <div class="col-md-4" style="padding-right:5px;">
+        <div id="profile-card" class="card">
+            <div class="card-image waves-effect waves-block waves-light">
+                <img class="activator" src="~/images/gallary/11.png" alt="user bg">
+            </div>
+
+            <div class="card-content">
+                <img src="~/images/avatar/avatar-10.png" alt="" class="circle responsive-img activator card-profile-image grey lighten-3 padding-2">
+                <a class="btn-floating activator btn-move-up waves-effect waves-light red accent-2 z-depth-5 right">
+                    <i class="material-icons">edit</i>
+                </a>
+                <div class="card-title activator grey-text text-darken-4 truncate">@Model.Name</div>
+                <div class="activator"><a class="grey-text text-darken-1" href="/core/stations/@Model.Station.Code.ToLower()">@Model.Station.Name</a></div>
+                <hr style="margin: 10px 0;" />
+                <p class="truncate">
+                    <i class="material-icons">assignment_ind</i>
+                    <span>@Model.Contacts</span>
+                </p>
+
+                <p>
+                    <i class="material-icons">perm_phone_msg</i>
+                    <span>@Model.Telephone</span>
+                </p>
+
+                <p>
+                    <i class="material-icons">event</i>
+                    <span>@Model.LastInvoice.ToString("dd/MM/yyyy")</span>
+                </p>
+
+                <p>
+                    <i class="material-icons">turned_in</i>
+                    <span>Ksh @string.Format("{0:N}", Model.Balance)</span>
+                </p>
+            </div>
+
+            <div class="card-reveal">
+                <span class="card-title grey-text text-darken-4 truncate">
+                    @Model.Name
+                    <i class="material-icons right">close</i>
+                </span>
+                <p>Here you can edit details about this customer</p>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Column -->
+    <div class="col-md-8" style="padding: 0; margin-top: 7px; margin-bottom: 0px;">
+        <nav class="navbar nav-extended">
+            <div class="nav-content preview" style="border: 1px solid rgba(0,0,0,0.1); margin-top: -5px;">
+                <ul class="tabs">
+                    <li class="tab summ"><a href="#summary" class="active">Summary</a></li>
+                    <li class="tab invs"><a href="#invoice">Invoices</a></li>
+                    <li class="tab pymt"><a href="#payment">Payments</a></li>
+                </ul>
+
+                <!-- SUMMARY TAB -->
+                <div id="summary" class="body">
+                    XX
+                </div>
+
+                <!-- INVOICE TAB -->
+                <div id="invoice" class="body">
+                    <div class="row" style="margin-top: 10px;">
+                        <div class="input-field col-md-3">
+                            <i class="material-icons prefix">date_range</i>
+                            <input id="invoiceStartDate" type="text" class="datepicker" value="@DateTime.Now.AddDays(-1).ToString("d MMMM, yyyy")" />
+                        </div>
+
+                        <div class="input-field col-md-3">
+                            <i class="material-icons prefix">date_range</i>
+                            <input id="invoiceStopsDate" type="text" class="datepicker" value="@DateTime.Now.AddDays(-1).ToString("d MMMM, yyyy")" />
+                        </div>
+
+                        <div class="input-field col-md-5">
+                            <i class="material-icons prefix">filter_list</i>
+                            <input id="invoiceFilter" type="text" placeholder="Filter Invoices" />
+                        </div>
+
+                        <div class="col-md-1 get-invoices">
+                            <a class="btn btn-floating pulse btn gradient-45deg-amber-amber right"><i class="material-icons" style="line-height: 42px">search</i></a>
+                        </div>
+                    </div>
+
+                    <table id="invoice-table" class="bordered" data-loaded="0" style="margin-top:-20px">
+                        <thead>
+                            <tr>
+                                <th>DATE</th>
+                                <th>LTS</th>
+                                <th>DESCRIPTION</th>
+                                <th>LPO</th>
+                                <th>INVOICE</th>
+                                <th>PRICE</th>
+                                <th class="">AMOUNT</th>
+                                <th width="55px">&nbsp;</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                        <tfoot></tfoot>
+                    </table>
+                </div>
+
+                <!-- PAYMENTS TAB -->
+                <div id="payment" class="body">
+                    <div class="row" style="margin-top: 10px;">
+                        <div class="input-field col-md-3">
+                            <i class="material-icons prefix">date_range</i>
+                            <input id="paymentStartDate" type="text" class="datepicker" value="@DateTime.Now.AddDays(-1).ToString(" d MMMM, yyyy")">
+                        </div>
+
+                        <div class="input-field col-md-3">
+                            <i class="material-icons prefix">date_range</i>
+                            <input id="paymentStopsDate" type="text" class="datepicker" value="@DateTime.Now.AddDays(-1).ToString(" d MMMM, yyyy")">
+                        </div>
+
+                        <div class="input-field col-md-5">
+                            <i class="material-icons prefix">filter_list</i>
+                            <input id="ipaymentFilter" type="text" placeholder="Filter Payments" />
+                        </div>
+
+                        <div class="col-md-1 get-purchases">
+                            <a class="btn btn-floating pulse btn gradient-45deg-amber-amber right"><i class="material-icons" style="line-height: 42px">search</i></a>
+                        </div>
+                    </div>
+
+                    <table id="payment-table" class="bordered" data-loaded="0" style="margin-top:-20px">
+                        <thead>
+                            <tr>
+                                <th>DATE</th>
+                                <th>RECEIPT</th>
+                                <th>DESCRIPTION</th>
+                                <th>CHQ.NO</th>
+                                <th>CHQ.AMT</th>
+                                <th>CASH</th>
+                                <th>TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                        <tfoot></tfoot>
+                    </table>
+                </div>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Finally -->
+    <div class="clear both"></div>
+</div>

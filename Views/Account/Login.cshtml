@@ -1,0 +1,159 @@
+﻿@model Client.ViewModel.LoginModel;
+
+@{
+    ViewData["Title"] = "Login";
+    var errors = ViewData.ModelState.Where(n => n.Value.Errors.Count > 0).ToList();
+}
+
+<style>
+    .row {
+        margin: 30px;
+    }
+
+    .login-div {
+        border-top: solid 20px #00adef;
+        padding: 0px;
+    }
+
+    .login-border {
+        border-left: solid 2px #efefef;
+        border-right: solid 2px #efefef;
+        border-bottom: solid 2px #efefef;
+        min-height: 500px;
+        padding: 20px;
+    }
+
+    .login-form-descr {
+        margin-bottom: 40px;
+    }
+
+    .login-form-reset {
+        margin-top: 50px;
+    }
+
+    .input-field .prefix {
+        margin-top: 15px;
+    }
+
+    .input-field div {
+        margin-left: 45px;
+    }
+
+    form button.btn {
+        margin-top: 10px;
+        margin-left: 45px;
+    }
+
+    input.error {
+        border-bottom: 2px solid #FF4081 !important;
+    }
+
+    div.col-md-8 img {
+        width: 100%;
+    }
+
+    body {
+        background-color: #fff;
+    }
+</style>
+
+<script>
+$(function() {
+        //Username Blurred
+        jq('#Username').blur(function() {
+            var un = jq(this).val();
+            var dv = jq(this).closest('div').find('div');
+            if (un.length == 0) {
+                dv.html("Enter a username");
+                jq(this).addClass('error');
+            }
+            else if (un.length < 4) {
+                dv.html("Enter at least 4 characters");
+                jq(this).addClass('error');
+            }
+            else {
+                dv.html("");
+                jq(this).removeClass('error');
+            }
+        });
+
+        //Password Blurred
+        jq('#Password').blur(function() {
+            var pw = jq(this).val();
+            var dv = jq(this).closest('div').find('div');
+            if (pw.length == 0) {
+                dv.html("Enter a password");
+                jq(this).addClass('error');
+            }
+            else if (pw.length < 4) {
+                dv.html("Enter at least 4 characters");
+                jq(this).addClass('error');
+            }
+            else {
+                dv.html("");
+                jq(this).removeClass('error');
+            }
+        });
+
+        //Validate Form before Submit
+        jq('form a').on('click', function(e) {
+            jq('#Username').blur();
+            jq('#Password').blur();
+
+            var un = jq('#User_Username');
+            var pw = jq('#User_Password');
+
+            if (un.hasClass('error') || pw.hasClass('error')) {
+                return;
+            }
+
+            jq("form").submit();
+        });
+
+        if ("@Model.Message" !== ""){
+            setTimeout(
+              function()
+              {
+                Materialize.toast('<span>@Model.Message</span><a class="btn-flat yellow-text" href="#!">Try Again<a>', 3000);
+              }, 
+            1000);
+        }
+
+});</script>
+
+<div class="row">
+    <div class="col-md-8">
+        <div>
+            <img src="~/images/igrp_web_v4.pNg" alt="Infographic" />@Model.Message
+        </div>
+    </div>
+
+    <div class="col-md-4 login-div">
+        <div class="login-border">
+            <h2 class="login-form-title"><strong>System Login</strong></h2>
+            <div class="login-form-descr">Please enter the username and password provided by your administrator.</div>
+
+            @using (Html.BeginForm("Login", "Account", FormMethod.Post))
+            {
+                <div class="input-field">
+                    <i class="material-icons prefix">account_circle</i>
+                    @Html.TextBoxFor(model => model.User.Username)
+                    <label for="Username">Username</label>
+                    <div class="error"></div>
+                </div>
+
+                <div class="input-field">
+                    <i class="material-icons prefix">vpn_lock</i>
+                    @Html.PasswordFor(model => model.User.Password)
+                    <label for="Password">Password</label>
+                    <div class="error"></div>
+                </div>
+
+                <button type="submit" class="waves-effect waves-light btn gradient-45deg-light-blue-cyan z-depth-4 mr-1">Login</button>
+
+                <div class="login-form-reset">Click <a href="#">here</a> if you have forgotten either your username or password, or not able to access the system.</div>
+                @Html.HiddenFor(model => model.ReturnUrl)
+            }
+        </div>
+    </div>
+</div>

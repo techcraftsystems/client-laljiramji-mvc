@@ -1,0 +1,89 @@
+﻿@model System.Collections.Generic.List<Client.Models.Customers>;
+
+@{
+    ViewData["Title"] = "Customers";
+}
+
+<link href="~/lib/data-tables/css/jquery.dataTables.min.css" type="text/css" rel="stylesheet">
+<script src="~/lib/data-tables/js/jquery.dataTables.min.js"></script>
+<script src="~/js/customers-index-script.js"></script>
+
+<style>
+    select {
+        display: initial;
+        height: 2rem;
+        width: auto;
+    }
+
+    .dataTables_wrapper .dataTables_filter input {
+        margin-left: 0;
+        height: 2rem !important;
+    }
+
+    .dataTables_length {
+        display: none;
+    }
+
+    .dataTables_filter {
+        margin-top: -60px;
+    }
+
+    .alight-right {
+        text-align: right;
+    }
+
+    h3 {
+        margin: 1.46rem 0 0 0;
+    }
+
+    table a {
+        color: #333;
+    }
+
+        table a:hover {
+            color: #00adef;
+        }
+</style>
+
+<h3 class="header">Customers Module</h3>
+
+<div class="col s12">
+    <table id="customers-table" class="display" cellspacing="0" width="100%">
+        <thead>
+            <tr>
+                <th>CUSTOMER</th>
+                <th>STATION</th>
+                <th>STATION</th>
+                <th>CONTACTS</th>
+                <th>PHONE</th>
+                <th>KRA PIN</th>
+                <th>BALANCE</th>
+            </tr>
+        </thead>
+        <tfoot>
+            <tr>
+                <th>CUSTOMER</th>
+                <th>STATION</th>
+                <th>STATION</th>
+                <th>CONTACTS</th>
+                <th>PHONE</th>
+                <th>KRA PIN</th>
+                <th>BALANCE</th>
+            </tr>
+        </tfoot>
+        <tbody>
+            @foreach (var cust in Model)
+            {
+                <tr>
+                    <td><a href="/customers/@cust.Station.Code.ToLower()/@cust.Id">@cust.Name</a></td>
+                    <td><a href="/core/stations/@cust.Station.Code.ToLower()">@cust.Station.Name.ToUpper()</a> </td>
+                    <td>@cust.Station.Name</td>
+                    <td>@cust.Contacts</td>
+                    <td>@cust.Telephone</td>
+                    <td>@cust.KraPin</td>
+                    <td class="right-align">@string.Format("{0:N}", cust.Balance)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
