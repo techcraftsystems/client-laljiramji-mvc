@@ -13,14 +13,8 @@ namespace Client.Controllers
     {
         // Index should redirect
         [Route("core/stations")]
-        public ActionResult Index(StationsService svc)
-        {
-            StationsMainViewModel model = new StationsMainViewModel
-            {
-                Stations = svc.GetStations()
-            };
-
-            return View(model);
+        public ActionResult Index(){
+            return View();
         }
 
         [AllowAnonymous]
@@ -74,11 +68,11 @@ namespace Client.Controllers
         }
 
         [AllowAnonymous]
-        public JsonResult GetLedgerEntries(Int64 stid, string start, string stop, string filter, StationsService svc){
+        public JsonResult GetLedgerEntries(string start, string stop, string filter, StationsService svc){
             if (string.IsNullOrWhiteSpace(filter))
                 filter = "";
 
-            List<LedgerEntries> entries = svc.GetLedgerEntries(stid, DateTime.Parse(start), DateTime.Parse(stop), filter);
+            List<LedgerEntries> entries = svc.GetLedgerEntries(DateTime.Parse(start), DateTime.Parse(stop), filter);
             return Json(entries);
         }
 

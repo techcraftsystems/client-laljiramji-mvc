@@ -1,4 +1,5 @@
 ﻿@model Client.Models.Customers;
+
 @{
     ViewData["Title"] = Model.Name;
 }
@@ -104,10 +105,9 @@
         function GetLedgerEntries(){
             jq.ajax({
                 dataType: "json",
-                url: '/Customers/GetLedgerEntries',
+                url: '/Customer/GetLedgerEntries',
                 data: {
                     "custid":   @Model.Id,
-                    "stid":     @Model.Station.Id,
                     "start":    jq('#invoiceStartDate').val(),
                     "stop":     jq('#invoiceStopsDate').val(),
                     "filter":   jq('#invoiceFilter').val()

@@ -3,133 +3,35 @@ using System.Collections.Generic;
 using System.Data.SqlClient;
 using Client.Models;
 using Client.Extensions;
+using Microsoft.AspNetCore.Http;
+using System.Security.Claims;
 
 namespace Client.Services
 {
     public class StationsService
     {
-        
-        public List<Stations> GetPendingPush()
+        public string dbo { get; set; }
+        public int dba { get; set; }
+
+        public StationsService(HttpContext httpContext)
         {
-            List<Stations> stations = new List<Stations>();
-
-            SqlServerConnection conn = new SqlServerConnection();
-            SqlDataReader dr = conn.SqlServerConnect("SELECT st_code, st_name, push_date FROM vLastPush INNER JOIN Stations ON push_station=st_idnt WHERE push_date<CAST(DATEADD(DAY, -1, GETDATE())AS DATE) ORDER BY push_date DESC, st_order, st_name");
-            if (dr.HasRows)
-            {
-                while (dr.Read())
-                {
-                    Stations station = new Stations();
-                    station.Code = dr[0].ToString();
-                    station.Name = dr[1].ToString();
-                    station.Push = Convert.ToDateTime(dr[2]);
-
-                    stations.Add(station);
-                }
-            }
-
-            return stations;
+            dbo = httpContext.User.FindFirst(ClaimTypes.Dsa).Value;
+            dba = int.Parse(httpContext.User.FindFirst(ClaimTypes.Dns).Value);
         }
 
-        public List<Stations> GetUpdatedPush()
-        {
-            List<Stations> stations = new List<Stations>();
-
-            SqlServerConnection conn = new SqlServerConnection();
-            SqlDataReader dr = conn.SqlServerConnect("SELECT st_code, st_name FROM vLastPush INNER JOIN Stations ON push_station=st_idnt WHERE push_date>=CAST(DATEADD(DAY, -1, GETDATE())AS DATE) ORDER BY push_date DESC, st_order, st_name");
-            if (dr.HasRows)
-            {
-                while (dr.Read())
-                {
-                    Stations station = new Stations();
-                    station.Code = dr[0].ToString();
-                    station.Name = dr[1].ToString();
-
-                    stations.Add(station);
-                }
-            }
-
-            return stations;
-        }
-
-        public Stations GetStation(string code){
-            Stations station = new Stations();
-
-            SqlServerConnection conn = new SqlServerConnection();
-            SqlDataReader dr = conn.SqlServerConnect("SELECT st_idnt, st_code, st_name, st_database, push_date FROM Stations INNER JOIN vLastPush ON push_station=st_idnt WHERE st_code='" + code + "'");
-            if (dr.Read())
-            {
-                station.Id = Convert.ToInt64(dr[0]);
-                station.Code = dr[1].ToString();
-                station.Name = dr[2].ToString();
-                station.Prefix = dr[3].ToString();
-                station.Push = Convert.ToDateTime(dr[4]);
-            }
-
-            return station;
-        }
-
-        public List<Stations> GetStations(){
-            List<Stations> stations = new List<Stations>();
-
-            SqlServerConnection conn = new SqlServerConnection();
-            SqlDataReader dr = conn.SqlServerConnect("SELECT st_idnt, st_code, st_name, sb_idnt, sb_brand, push_date, pcol_ltrs, pcol_amts FROM vLastPush INNER JOIN Stations ON push_station=st_idnt INNER JOIN StationsBrand ON st_brand=sb_idnt INNER JOIN vDailySales ON push_station=pcol_station AND push_date=pcol_date ORDER BY push_date DESC, st_order");
-            if (dr.HasRows)
-            {
-                while (dr.Read())
-                {
-                    Stations station = new Stations();
-                    station.Id = Convert.ToInt64(dr[0]);
-                    station.Code = dr[1].ToString();
-                    station.Name = dr[2].ToString();
-
-                    station.Brand.Id = Convert.ToInt64(dr[3]);
-                    station.Brand.Name = dr[4].ToString();
-
-                    station.Push = Convert.ToDateTime(dr[5]);
-                    station.FuelLtrs = Convert.ToDouble(dr[6]);
-                    station.FuelSales = Convert.ToDouble(dr[7]);
-
-                    stations.Add(station);
-                }
-            }
-
-            return stations;
-        }
-
-        public List<Stations> GetStationsByNames()
-        {
-            List<Stations> stations = new List<Stations>();
-
-            SqlServerConnection conn = new SqlServerConnection();
-            SqlDataReader dr = conn.SqlServerConnect("SELECT st_idnt, st_code, st_name FROM Stations ORDER BY st_name");
-            if (dr.HasRows)
-            {
-                while (dr.Read())
-                {
-                    Stations station = new Stations();
-                    station.Id = Convert.ToInt64(dr[0]);
-                    station.Code = dr[1].ToString();
-                    station.Name = dr[2].ToString();
-
-                    stations.Add(station);
-                }
-            }
-
-            return stations;
-        }
-
-        public List<PumpReadings> GetMetreReadings(Stations st, DateTime date) {
+        public List<PumpReadings> GetMetreReadings(DateTime date) {
             List<PumpReadings> readings = new List<PumpReadings>();
 
             SqlServerConnection conn = new SqlServerConnection();
-            SqlDataReader dr = conn.SqlServerConnect("SELECT pcol_idnt, pcol_pump, pmp_name, pcol_price, pcol_op, pcol_adjust, pcol_test, pcol_cl FROM vPumps LEFT OUTER JOIN vReadings ON pmp_st=pcol_st AND pmp_idnt=pcol_pump WHERE pmp_st=" + st.Id + " AND pcol_date='" + date.Date + "'");
+            SqlDataReader dr = conn.SqlServerConnect("DECLARE @date DATE='" + date + "'; SELECT ISNULL(pcol_idnt,0)x, pmp_idnt, pmp_name, ISNULL(pcol_price, pp_price) price, ISNULL(pcol_electronic_op,pp_read)op, ISNULL(pcol_electronic_adjust,0)adj, ISNULL(pcol_electronic_test,0)tst, ISNULL(pcol_electronic_cl,pp_read) cl FROM " + dbo + "Pumps LEFT OUTER JOIN " + dbo + "PumpsCollections ON pcol_pump=pmp_idnt AND pcol_date=@date LEFT OUTER JOIN (SELECT pmp, pcol_price pp_price, pcol_electronic_cl pp_read FROM (SELECT MAX(pcol_date) dts, pcol_pump pmp FROM " + dbo + "PumpsCollections WHERE pcol_date<@date GROUP BY pcol_pump) As Foo INNER JOIN " + dbo + "PumpsCollections ON pcol_date=dts AND pcol_pump=pmp) As Op ON pmp=pmp_idnt ORDER BY pmp_idnt");
             if (dr.HasRows)
             {
                 while (dr.Read())
                 {
-                    PumpReadings reading = new PumpReadings();
-                    reading.Id = Convert.ToInt64(dr[0]);
+                    PumpReadings reading = new PumpReadings
+                    {
+                        Id = Convert.ToInt64(dr[0])
+                    };
                     reading.Pump.Id = Convert.ToInt64(dr[1]);
                     reading.Pump.Name = dr[2].ToString();
 
@@ -146,11 +48,11 @@ namespace Client.Services
             return readings;
         }
 
-        public List<TankSummary> GetSummaries(Stations st, DateTime date){
+        public List<TankSummary> GetSummaries(DateTime date){
             List<TankSummary> summaries = new List<TankSummary>();
 
             SqlServerConnection conn = new SqlServerConnection();
-            SqlDataReader dr = conn.SqlServerConnect("DECLARE @date DATE='" + date.Date + "', @stn INT=" + st.Id + "; SELECT tnk_idnt, tnk_name, tnk_capacity, tnk_fuel, ISNULL(pcol_rtns,0) RTNS,  ISNULL(pcol_sales,0) SALES, ISNULL(dd.delv,0) DELVS, ISNULL(td.reads,0) DIPS, ISNULL(op.ttd_read,0) OP FROM vTanks LEFT OUTER JOIN (SELECT ttd_st, tdd_tank, td_reading ttd_read FROM (SELECT td_st ttd_st, td_tank tdd_tank, MAX(td_date) tdd_date FROM vTanksDips WHERE td_date<@date GROUP BY td_st, td_tank) AS z1 INNER JOIN vTanksDips ON ttd_st=td_st AND tdd_tank=td_tank AND td_date=tdd_date) As op ON tnk_st=ttd_st AND tdd_tank=tnk_idnt LEFT OUTER JOIN vTanksSales ON tnk_st=pcol_st AND tnk_idnt=pcol_tank AND pcol_date=@date LEFT OUTER JOIN (SELECT fr_st, fr_tank, SUM(fr_qnty) delv FROM vTanksDelv WHERE fr_date=@date GROUP BY fr_st, fr_tank) As dd ON fr_st=tnk_st AND fr_tank=tnk_idnt LEFT OUTER JOIN (SELECT td_st, td_tank, SUM(td_reading) reads FROM vTanksDips WHERE td_date=@date GROUP BY td_st, td_tank) As td ON td_st=tnk_st AND td_tank=tnk_idnt WHERE tnk_st=@stn ORDER BY tnk_idnt");
+            SqlDataReader dr = conn.SqlServerConnect("DECLARE @date1 DATE='" + new DateTime(date.Year, date.Month, 1) + "', @date2 DATE='" + date + "'; SELECT dp_tank, tnk_name, tnk_capacity, ISNULL(tdd.td_fuel, tnk_fuel) dp_fuel, ISNULL(rtn,0) RTNS, ISNULL(sal,0) SALES, ISNULL(fr_quantity,0) DELVS, ISNULL(tdd.td_reading,0) As DIPS, MIN(tda.td_reading)-ISNULL(tnkDF,0) As [OPEN] FROM (SELECT MAX(td_date) dp_date, td_tank dp_tank FROM " + dbo + "TanksDips WHERE CAST(td_date AS DATE)<@date1 GROUP BY td_tank ) As Foo INNER JOIN " + dbo + "Tanks ON dp_tank=tnk_idnt INNER JOIN " + dbo + "TanksDips tda ON dp_date=tda.td_date AND dp_tank=tda.td_tank LEFT OUTER JOIN " + dbo + "TanksDips tdd ON dp_tank=tdd.td_tank AND CAST(tdd.td_date AS DATE)=@date2 LEFT OUTER JOIN " + dbo + "FuelReceipts ON fr_tank=dp_tank AND fr_date=@date2 LEFT OUTER JOIN (SELECT tnk1D, SUM(tnkDF) tnkDF FROM (SELECT pcol_tank tnk1D, pcol_electronic_cl-pcol_electronic_test-pcol_electronic_adjust-pcol_electronic_op tnkDF FROM " + dbo + "PumpsCollections WHERE pcol_date>=@date1 AND pcol_date<@date2 UNION ALL SELECT fr_tank, 0-fr_quantity FROM " + dbo + "FuelReceipts WHERE fr_date>=@date1 AND fr_date<@date2) As Diffs GROUP BY tnk1D) As kD1 ON tnk1D=dp_tank LEFT OUTER JOIN (SELECT pcol_tank tnk, SUM(pcol_electronic_cl-pcol_electronic_op) sal, SUM(pcol_electronic_test) rtn FROM " + dbo + "PumpsCollections WHERE pcol_date=@date2 GROUP BY pcol_tank) As Sl ON tnk=dp_tank GROUP BY dp_tank, tdd.td_fuel, tnk_fuel, tdd.td_idnt, tnk_name, tdd.td_reading, fr_quantity, tnkDF, tnk_capacity, rtn, sal ORDER BY dp_tank");
             if (dr.HasRows)
             {
                 while (dr.Read())
@@ -176,11 +78,11 @@ namespace Client.Services
             return summaries;
         }
 
-        public List<LegderSummary> GetCustomersSummaries(Stations st, DateTime date){
+        public List<LegderSummary> GetLedgerSummary(DateTime date){
             List<LegderSummary> summaries = new List<LegderSummary>();
 
             SqlServerConnection conn = new SqlServerConnection();
-            SqlDataReader dr = conn.SqlServerConnect("SELECT mm_account, mm_acname, mm_type, mm_action, mm_amount, mm_lube, ISNULL(mm_disc,0) mm_disc FROM vLedgerSummary WHERE mm_st=" + st.Id + " AND mm_date='" + date.Date + "'");
+            SqlDataReader dr = conn.SqlServerConnect("DECLARE @date DATE='" + date + "' SELECT mm_account, mm_acname, mm_type, mm_action, SUM(mm_amount) mm_amount, SUM(mm_lube) mm_lube, SUM(mm_disc) mm_disc FROM (SELECT mm_date, 0 mm_type, mm_action, mm_account, CASE WHEN mm_action<>4 THEN BankName+(CASE WHEN BankName IN ('EQUITY','CFC') THEN ' VISA' ELSE '' END) ELSE 'LIPA NA MPESA' END mm_acname, mm_amount, 0 mm_lube, 0 mm_disc FROM " + dbo + "MoneyTransactions LEFT OUTER JOIN " + dbo + "AccountsBank ON BankID=mm_account AND mm_action<>4 WHERE mm_source=15 AND mm_action<>0 UNION ALL SELECT sr_date, 1,0,sr_cust, Names, sr_amts, sr_lube, sr_discount FROM " + dbo + "Receipts INNER JOIN " + dbo + "Customers ON Custid=sr_cust) AS Foo WHERE mm_date=@date GROUP BY mm_acname, mm_type, mm_action, mm_account");
             if (dr.HasRows)
             {
                 while (dr.Read())
@@ -201,27 +103,27 @@ namespace Client.Services
             return summaries;
         }
 
-        public LedgerTotals GetLedgerTotals(Stations st, DateTime date){
+        public LedgerTotals GetLedgerTotals(DateTime date){
             LedgerTotals total = new LedgerTotals();
 
             SqlServerConnection conn = new SqlServerConnection();
-            SqlDataReader dr = conn.SqlServerConnect("DECLARE @date DATE='" + date.Date + "', @st INT=" + st.Id +"; SELECT st_idnt, ISNULL(ar_cash,0)cs, ISNULL(mm_visa,0)vc, ISNULL(mm_mpesa,0)mp, ISNULL(mm_pos,0)ps, ISNULL(ex_amts,0)xp, ISNULL(ar_cwash,0)cw, ISNULL(ar_tyre,0)tc, ISNULL(ar_service,0)sv FROM Stations LEFT OUTER JOIN vLedgerAccounts ON st_idnt=mm_st AND mm_date=@date LEFT OUTER JOIN (SELECT ar_st, ar_cash, ar_cwash, ar_tyre, ar_service FROM vLedgerCash WHERE ar_date=@date) As Cash ON ar_st=st_idnt LEFT OUTER JOIN (SELECT ex_st, ex_amts FROM vLedgerExpenses WHERE ex_date=@date) As exps ON ex_st=st_idnt WHERE st_idnt=@st");
+            SqlDataReader dr = conn.SqlServerConnect("DECLARE @date DATE='" + date.Date + "', @st INT=" + dba +"; SELECT ISNULL(ar_cash,0)cs, ISNULL(mm_visa,0)vc, ISNULL(mm_mpesa,0)mp, ISNULL(mm_pos,0)ps, ISNULL(ex_amts,0)xp, ISNULL(ar_cwash,0)cw, ISNULL(ar_tyre,0)tc, ISNULL(ar_service,0)sv FROM Stations LEFT OUTER JOIN vLedgerAccounts ON st_idnt=mm_st AND mm_date=@date LEFT OUTER JOIN (SELECT ar_st, ar_cash, ar_cwash, ar_tyre, ar_service FROM vLedgerCash WHERE ar_date=@date) As Cash ON ar_st=st_idnt LEFT OUTER JOIN (SELECT ex_st, ex_amts FROM vLedgerExpenses WHERE ex_date=@date) As exps ON ex_st=st_idnt WHERE st_idnt=@st");
             if (dr.Read())
             {
-                total.Station.Id = Convert.ToInt64(dr[0]);
+                total.Station.Id = Convert.ToInt64(dba);
                 total.Date = date;
-                total.Cash = Convert.ToDouble(dr[1]);
-                total.Visa = Convert.ToDouble(dr[2]);
-                total.Mpesa = Convert.ToDouble(dr[3]);
-                total.POS = Convert.ToDouble(dr[4]);
-                total.Expense = Convert.ToDouble(dr[5]);
+                total.Cash = Convert.ToDouble(dr[0]);
+                total.Visa = Convert.ToDouble(dr[1]);
+                total.Mpesa = Convert.ToDouble(dr[2]);
+                total.POS = Convert.ToDouble(dr[3]);
+                total.Expense = Convert.ToDouble(dr[4]);
 
                 total.Account = total.Visa + total.Mpesa + total.POS;
                 total.Summary = total.Account + total.Cash + total.Expense;
 
-                total.CarWash = Convert.ToDouble(dr[6]);
-                total.TyreCtr = Convert.ToDouble(dr[7]);
-                total.Service = Convert.ToDouble(dr[8]);
+                total.CarWash = Convert.ToDouble(dr[5]);
+                total.TyreCtr = Convert.ToDouble(dr[6]);
+                total.Service = Convert.ToDouble(dr[7]);
             }
 
             return total;
@@ -293,7 +195,7 @@ namespace Client.Services
             return reconciles;
         }
 
-        public List<LedgerEntries> GetLedgerEntries(Int64 stid, DateTime start, DateTime stop, String filter, Int64 custid = 0){
+        public List<LedgerEntries> GetLedgerEntries(DateTime start, DateTime stop, String filter, Int64 custid = 0){
             List<LedgerEntries> entries = new List<LedgerEntries>();
             String AdditionalString = "";
 
@@ -302,13 +204,13 @@ namespace Client.Services
             }
 
             SqlServerConnection conn = new SqlServerConnection();
-            SqlDataReader dr = conn.SqlServerConnect("SELECT mm_idnt, mm_action, mm_account, mm_date, mm_desc, am_lpos, am_invs, mm_name, mm_price, mm_amount FROM vLedgerzEntry " + conn.GetQueryString(filter, "mm_desc+'-'+am_lpos+'-'+am_invs+'-'+mm_name+'-'+CAST(mm_amount AS NVARCHAR)", "mm_st=" + stid + " AND mm_date BETWEEN '" + start.Date + "' AND '" + stop.Date + "'") + AdditionalString + " ORDER BY mm_date, am_invs, am_lpos, mm_desc");
+            SqlDataReader dr = conn.SqlServerConnect("SELECT mm_idnt, mm_action, mm_account, mm_date, mm_desc, am_lpos, am_invs, mm_name, mm_price, mm_amount FROM vLedgerzEntry " + conn.GetQueryString(filter, "mm_desc+'-'+am_lpos+'-'+am_invs+'-'+mm_name+'-'+CAST(mm_amount AS NVARCHAR)", "mm_st=" + dba + " AND mm_date BETWEEN '" + start.Date + "' AND '" + stop.Date + "'") + AdditionalString + " ORDER BY mm_date, am_invs, am_lpos, mm_desc");
             if (dr.HasRows)
             {
                 while (dr.Read())
                 {
                     LedgerEntries entry = new LedgerEntries();
-                    entry.Station.Id = stid;
+                    entry.Station.Id = dba;
                     entry.Id = Convert.ToInt64(dr[0]);
                     entry.Action = Convert.ToInt64(dr[1]);
                     entry.Account = Convert.ToInt64(dr[2]);
@@ -334,7 +236,7 @@ namespace Client.Services
             List<LedgerEntries> entries = new List<LedgerEntries>();
 
             SqlServerConnection conn = new SqlServerConnection();
-            SqlDataReader dr = conn.SqlServerConnect("DECLARE @date1 DATE='" + start.Date + "', @date2 DATE='" + stop.Date + "'; SELECT TOP(200) sr_idnt, sr_date, CASE sr_fuel WHEN 1 THEN 'LTS DIESEL' WHEN 2 THEN 'LTS SUPER' WHEN 3 THEN 'LTS VPOWER' WHEN 4 THEN 'LTS KEROSENE' ELSE 'OTHERS' END xdesc, sr_lpo, sr_invoice, sr_price, sr_amts, sr_cust, Names, sr_st, st_code, st_name FROM ( SELECT sr_idnt, sr_st, sr_cust, sr_date, sr_fuel, sr_overpump, sr_lpo, sr_invoice, sr_price, sr_amts, sr_discount FROM vInvoicesLedger WHERE sr_invoice IN ( SELECT DISTINCT invs FROM vInvoicesDuplicates INNER JOIN vInvoicesLedger ON invs=sr_invoice WHERE sr_date BETWEEN @date1 AND @date2) UNION ALL SELECT sr_idnt, sr_st, sr_cust, sr_date, sr_fuel, sr_overpump, sr_lpo, sr_invoice, sr_price, sr_amts, sr_discount FROM vInvoicesLedger WHERE sr_date BETWEEN @date1 AND @date2 AND sr_invoice=0 ) As Foo INNER JOIN Stations ON st_idnt=sr_st INNER JOIN vCustomers ON sr_cust=Custid AND Sts=st_idnt ORDER BY sr_invoice, sr_date, sr_fuel");
+            SqlDataReader dr = conn.SqlServerConnect("DECLARE @date1 DATE='" + start.Date + "', @date2 DATE='" + stop.Date + "'; SELECT TOP(200) sr_idnt, sr_date, CASE sr_fuel WHEN 1 THEN 'LTS DIESEL' WHEN 2 THEN 'LTS SUPER' WHEN 3 THEN 'LTS VPOWER' WHEN 4 THEN 'LTS KEROSENE' ELSE 'OTHERS' END xdesc, sr_lpo, sr_invoice, sr_price, sr_amts, sr_cust, Names, sr_st, st_code, st_name FROM ( SELECT sr_idnt, sr_st, sr_cust, sr_date, sr_fuel, sr_overpump, sr_lpo, sr_invoice, sr_price, sr_amts, sr_discount FROM vInvoicesLedger WHERE sr_invoice IN (SELECT DISTINCT invs FROM vInvoicesDuplicates INNER JOIN vInvoicesLedger ON invs=sr_invoice WHERE sr_date BETWEEN @date1 AND @date2) UNION ALL SELECT sr_idnt, sr_st, sr_cust, sr_date, sr_fuel, sr_overpump, sr_lpo, sr_invoice, sr_price, sr_amts, sr_discount FROM vInvoicesLedger WHERE sr_date BETWEEN @date1 AND @date2 AND sr_invoice=0 ) As Foo INNER JOIN Stations ON st_idnt=sr_st INNER JOIN vCustomers ON sr_cust=Custid AND Sts=st_idnt ORDER BY sr_invoice, sr_date, sr_fuel");
             if (dr.HasRows)
             {
                 while (dr.Read())
@@ -374,14 +276,17 @@ namespace Client.Services
             SqlDataReader dr = conn.SqlServerConnect("DECLARE @date1 DATE='" + start.Date + "', @date2 DATE='" + stop.Date + "'; SELECT sr_idnt, sr_date, CASE sr_fuel WHEN 1 THEN 'LTS DIESEL' WHEN 2 THEN 'LTS SUPER' WHEN 3 THEN 'LTS VPOWER' WHEN 4 THEN 'LTS KEROSENE' ELSE 'OTHERS' END xdesc, sr_lpo, sr_invoice, sr_price, sr_amts, sr_cust, Names, sr_st, st_code, st_name FROM ( SELECT sr_idnt, sr_st, sr_cust, sr_date, sr_fuel, sr_overpump, sr_lpo, sr_invoice, sr_price, sr_amts, sr_discount FROM vInvoicesLedger WHERE sr_invoice IN ( SELECT DISTINCT invs FROM vInvoicesDuplicates INNER JOIN vInvoicesLedger ON invs=sr_invoice WHERE sr_date BETWEEN @date1 AND @date2) UNION ALL SELECT sr_idnt, sr_st, sr_cust, sr_date, sr_fuel, sr_overpump, sr_lpo, sr_invoice, sr_price, sr_amts, sr_discount FROM vInvoicesLedger WHERE sr_date BETWEEN @date1 AND @date2 AND sr_invoice=0 ) As Foo INNER JOIN Stations ON st_idnt=sr_st INNER JOIN vCustomers ON sr_cust=Custid ORDER BY sr_invoice, sr_date, sr_fuel");
             if (dr.HasRows) {
                 while (dr.Read()){
-                    LedgerEntries entry = new LedgerEntries();
-                    entry.Id = Convert.ToInt64(dr[0]);
-                    entry.Date = Convert.ToDateTime(dr[1]).ToString("dd/MM/yyyy");
-                    entry.Description = dr[2].ToString();
-                    entry.Lpo = dr[3].ToString();
-                    entry.Invoice = dr[4].ToString();
-                    entry.Price = Convert.ToDouble(dr[5]);
-                    entry.Amount = Convert.ToDouble(dr[6]);
+                    LedgerEntries entry = new LedgerEntries
+                    {
+                        Id = Convert.ToInt64(dr[0]),
+                        Date = Convert.ToDateTime(dr[1]).ToString("dd/MM/yyyy"),
+                        Description = dr[2].ToString(),
+                        Lpo = dr[3].ToString(),
+                        Invoice = dr[4].ToString(),
+                        Price = Convert.ToDouble(dr[5]),
+                        Amount = Convert.ToDouble(dr[6])
+                    };
+
                     entry.Quantity = (entry.Amount / entry.Price);
 
                     entry.Customer.Id = Convert.ToInt64(dr[7]);

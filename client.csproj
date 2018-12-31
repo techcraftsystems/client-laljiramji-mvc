@@ -154,7 +154,7 @@
     <Folder Include="Views\Account\" />
     <Folder Include="Views\Purchases\" />
     <Folder Include="Views\Reports\" />
-    <Folder Include="Views\Customers\" />
+    <Folder Include="Views\Customer\" />
     <Folder Include="Views\Suppliers\" />
     <Folder Include="Views\Sales\" />
     <Folder Include="Views\Banking\" />

@@ -1,4 +1,5 @@
 ﻿@model System.Collections.Generic.List<Client.Models.Customers>;
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor;
 
 @{
     ViewData["Title"] = "Customers";
@@ -35,14 +36,15 @@
     h3 {
         margin: 1.46rem 0 0 0;
     }
-
     table a {
         color: #333;
     }
-
-        table a:hover {
-            color: #00adef;
-        }
+    table a:hover {
+        color: #00adef;
+    }
+    table tr.group {
+        color: dodgerblue;
+    }
 </style>
 
 <h3 class="header">Customers Module</h3>
@@ -75,9 +77,9 @@
             @foreach (var cust in Model)
             {
                 <tr>
-                    <td><a href="/customers/@cust.Station.Code.ToLower()/@cust.Id">@cust.Name</a></td>
-                    <td><a href="/core/stations/@cust.Station.Code.ToLower()">@cust.Station.Name.ToUpper()</a> </td>
-                    <td>@cust.Station.Name</td>
+                    <td><a href="/customers/@cust.Id">@cust.Name</a></td>
+                    <td><a>@HttpContextAccessor.HttpContext.User.Identity.Name</a></td>
+                    <td class="red-text">STATION NAME :: <b>@HttpContextAccessor.HttpContext.User.Identity.Name.ToUpper()</b></td>
                     <td>@cust.Contacts</td>
                     <td>@cust.Telephone</td>
                     <td>@cust.KraPin</td>

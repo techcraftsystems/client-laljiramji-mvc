@@ -70,15 +70,7 @@
             <div class="navbar-collapse collapse">
                 @if (HttpContextAccessor.HttpContext.User.Identity.IsAuthenticated)
                 {
-                    <ul class="nav navbar-nav">
-                        <li><a asp-area="" asp-controller="Stations" asp-action="Index">Stations</a></li>
-                        <li><a asp-area="" asp-controller="Suppliers" asp-action="Index">Suppliers</a></li>
-                        <li><a asp-area="" asp-controller="Customers" asp-action="Index">Customers</a></li>
-                        <li><a asp-area="" asp-controller="Purchases" asp-action="Index">Purchases</a></li>
-                        <li><a asp-area="" asp-controller="Sales" asp-action="Index">Sales</a></li>
-                        <li><a asp-area="" asp-controller="Banking" asp-action="Index">Bank</a></li>
-                        <li><a asp-area="" asp-controller="Reports" asp-action="Index">Reports</a></li>
-                    </ul>
+
 
                     <!-- Icons far Right -->
                     <ul class="right hide-on-med-and-down">
@@ -108,6 +100,13 @@
                                 <i class="material-icons">format_indent_increase</i>
                             </a>
                         </li>
+                    </ul>
+
+                    <ul class="right nav navbar-nav" style="margin-right: 30px;">
+                        <li><a asp-area="" asp-controller="Customer" asp-action="Index">Customers</a></li>
+                        <li><a asp-area="" asp-controller="Products" asp-action="Index">Products</a></li>
+                        <li><a asp-area="" asp-controller="Sales" asp-action="Index">Sales</a></li>
+                        <li><a asp-area="" asp-controller="Reports" asp-action="Index">Reports</a></li>
                     </ul>
                 }
                 else
@@ -197,7 +196,7 @@
         <hr />
         <footer class="">
             <p>
-                <span>All Rights Reserved &copy; 2018 &mdash; Lalji Ramji Filling Station</span>
+                <span>All Rights Reserved &copy; 2018 &mdash; Lalji Ramji Filling Station (<span class="blue-text">@HttpContextAccessor.HttpContext.User.Identity.Name</span>)</span>
                 <span style="float:right">Developed by <a href="http://www.techcraftsystems.net" target="_blank">Techcraft Systems</a></span>
             </p>
         </footer>

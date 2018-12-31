@@ -61,9 +61,13 @@ namespace Client.Controllers
 
                 var claims = new List<Claim>
                 {
-                    new Claim(ClaimTypes.Name, user.Name),
-                    new Claim(ClaimTypes.UserData, user.Username),
+                    new Claim(ClaimTypes.GivenName, user.Name),
+                    new Claim(ClaimTypes.Actor, user.Username),
                     new Claim(ClaimTypes.Role, "Administrator"),
+                    new Claim(ClaimTypes.Dns, user.Station.Id.ToString()),
+                    new Claim(ClaimTypes.Dsa, user.Station.Prefix),
+                    new Claim(ClaimTypes.Name, user.Station.Name)
+
                 };
 
                 var claimsIdentity = new ClaimsIdentity(

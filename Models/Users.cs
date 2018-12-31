@@ -13,6 +13,7 @@ namespace Client.Models
         public Int64 AdminLevel { get; set; }
         public String AccessLevel { get; set; }
         public string Message { get; set; }
+        public Stations Station { get; set; }
 
         public Users()
         {
@@ -25,8 +26,9 @@ namespace Client.Models
             ToChange = false;
             AdminLevel = 0;
             AccessLevel = "";
-
             Message = "";
+
+            Station = new Stations();
         }
     }
 }

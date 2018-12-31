@@ -7,18 +7,25 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
+using System;
+using System.Globalization;
 
 namespace Client.Controllers
 {
     [Authorize]
     public class HomeController : Controller
     {
-        public IActionResult Index(StationsService svc)
+        public IActionResult Index(IndexViewModel model, String date = "")
         {
+            StationsService service = new StationsService(HttpContext);
+            if (!string.IsNullOrEmpty(date)) 
+                model.Timestamp = DateTime.ParseExact(date, "yyyyMMdd", CultureInfo.InvariantCulture);
 
-            IndexViewModel model = new IndexViewModel();
-            model.Pending = new List<Stations>(svc.GetPendingPush());
-            model.Updated = new List<Stations>(svc.GetUpdatedPush());
+            model.Readings = new List<PumpReadings>(service.GetMetreReadings(model.Timestamp));
+            model.Summaries = new List<TankSummary>(service.GetSummaries(model.Timestamp));
+            model.Ledgers = new List<LegderSummary>(service.GetLedgerSummary(model.Timestamp));
+
+            model.Totals = service.GetLedgerTotals(model.Timestamp);
 
             return View(model);
         }
